@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<!--
+============================================================
+ DIGI Legacy Vault — dlv-trustee-change (GitHub Pages version)
+ IT69 | July 15, 2026
+ NEW FILE.
+ Standalone companion app to dlv-voice-recorder, opened from the
+ "Replace This Trustee" button on upload_test.html's Trustees tab
+ (function openTrusteeChange(n), Code.gs IT69). Implements the
+ subscriber's requested 2-step trustee-replacement process:
+   1) Subscriber writes and sends a short notice to the trustee
+      being replaced (this page).
+   2) Subscriber then returns to the main site and nominates a
+      replacement by deleting the old nomination and re-running
+      the normal nomination flow (no fee, same pattern already
+      used for domain-access changes).
+ No signature canvas, no voice recording, no fee — this page is
+ deliberately simpler than dlv-voice-recorder. It POSTs
+ action:'sendTrusteeChangeNotice' to the shared GAS_WEBAPP_URL
+ (no-cors, so the response can't be read directly), then polls
+ action:'checkTrusteeChangeNoticeSent' via JSONP the same way
+ dlv-voice-recorder polls checkNominationSent.
+============================================================
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DLV Trustee Replacement Notice</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: Georgia, 'Times New Roman', serif;
+  background: #f5f0e8;
+  color: #1a1108;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+#return-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem 1.2rem;
+  background: #1a1108;
+  color: #ffffff !important;
+  border: none;
+  border-radius: 30px;
+  font-family: Georgia, serif;
+  font-size: .78rem; font-weight: bold;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: opacity .2s;
+  text-decoration: none;
+}
+#return-btn:hover { opacity: .82; }
+#tc-topbar {
+  background: #1a1108;
+  color: #f5f0e8;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 8px 8px 0 0;
+  padding: 9px 18px;
+  font-size: .72rem;
+  font-weight: bold;
+  letter-spacing: .09em;
+  text-align: center;
+  color: #d4af7a;
+}
+#tc-card {
+  background: #ffffff;
+  border: 1px solid #d4af7a;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  padding: 28px 28px 24px;
+  width: 100%;
+  max-width: 500px;
+  text-align: center;
+  box-shadow: 0 4px 18px rgba(26,17,8,.10);
+}
+h1 {
+  font-size: 1.25rem;
+  color: #1a1108;
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+#tc-subtitle {
+  font-size: .78rem;
+  color: #1a1108;
+  margin-bottom: 20px;
+  font-weight: bold;
+}
+#trustee-badge {
+  display: inline-block;
+  background: #f5f0e8;
+  border: 1px solid #d4af7a;
+  border-radius: 20px;
+  padding: .3rem .9rem;
+  font-size: .72rem;
+  font-weight: bold;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #1a1108;
+  margin-bottom: 16px;
+}
+#process-note {
+  display: block;
+  background: #fff8ee;
+  border: 1px solid #d4af7a;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  font-size: .76rem;
+  color: #1a1108;
+  font-weight: bold;
+  line-height: 1.6;
+  text-align: left;
+}
+.tc-divider { border: none; border-top: 1px solid #e8dfc8; margin: 16px 0; }
+.section-label {
+  font-size: .72rem;
+  font-weight: bold;
+  color: #1a1108;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 8px;
+  text-align: left;
+}
+#notice-textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 10px 12px;
+  border: 1px solid #d4af7a;
+  border-radius: 8px;
+  font-family: Georgia, serif;
+  font-size: .82rem;
+  color: #1a1108;
+  background: #fff;
+  resize: vertical;
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+.tc-btn {
+  width: 100%;
+  padding: 11px;
+  border-radius: 8px;
+  border: none;
+  font-family: Georgia, serif;
+  font-size: .9rem;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: opacity .2s;
+}
+.tc-btn:hover { opacity: .85; }
+.tc-btn:disabled { cursor: default; opacity: .7; }
+#send-btn { background: #b8860b; color: #ffffff; }
+#continue-btn { background: #1a1108; color: #ffffff; display: none; }
+#send-status {
+  font-size: .78rem;
+  color: #1a1108;
+  min-height: 18px;
+  margin-top: 4px;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+#success-box {
+  display: none;
+  background: #eaf5e8;
+  border: 1px solid #a8d5be;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin: 4px 0 16px;
+  text-align: left;
+}
+#success-box p {
+  font-size: .8rem;
+  color: #1a4d35;
+  font-weight: bold;
+  line-height: 1.6;
+}
+#tc-footer { margin-top: 20px; font-size: .66rem; color: #7a6040; font-weight: bold; }
+</style>
+</head>
+<body>
+<button id="return-btn" onclick="returnToMain()">&#8592; Return to Main Page</button>
+<div id="tc-topbar">DIGI LEGACY VAULT &nbsp;&middot;&nbsp; TRUSTEE REPLACEMENT NOTICE &nbsp;&middot;&nbsp; IT69</div>
+<div id="tc-card">
+  <h1>&#128260; Replace This Trustee</h1>
+  <p id="tc-subtitle">Send a short notice to your current trustee before nominating a replacement</p>
+  <div id="trustee-badge">Trustee <span id="trustee-number-label">&#8212;</span> <span id="trustee-name-label"></span></div>
+  <div id="process-note">&#128712; How this works: 1) Write and send a brief notice to let this trustee know their role is changing. 2) Once sent, return to the main page and nominate a replacement — simply delete this nomination and submit a new one. No fee applies.</div>
+  <hr class="tc-divider">
+  <div class="section-label">&#128221; Your Notice</div>
+  <textarea id="notice-textarea"></textarea>
+  <div id="send-status"></div>
+  <div id="success-box">
+    <p>&#10003; Your notice has been sent. You may now return to the main page and nominate a replacement trustee — simply delete this nomination and submit a new one. No fee applies.</p>
+  </div>
+  <button class="tc-btn" id="send-btn" onclick="sendNotice()">&#128231; Send Notice</button>
+  <button class="tc-btn" id="continue-btn" onclick="returnToMain()">&#8594; Return to Nominate a Replacement</button>
+  <div id="tc-footer">digilegacyvault.com &nbsp;&middot;&nbsp; IT69</div>
+</div>
+<button id="return-btn" style="margin-top:14px;" onclick="returnToMain()">&#8592; Return to Main Page</button>
+<script>
+// ============================================================
+// CONFIG — shared with dlv-voice-recorder and Code.gs.
+// ============================================================
+var GAS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzyJ8ioKlBCfrZsSlVMCNirecqWGZnu8u4BSn33xW1w8Bngr2Xwv8JFHBabnKODTWNb6w/exec';
+// ============================================================
+// Read the URL params set by openTrusteeChange(n) in
+// upload_test.html: trustee, subscriberEmail, subscriberName,
+// trusteeName, trusteeEmail.
+// ============================================================
+function getParam(name) {
+  var params = new URLSearchParams(window.location.search);
+  return (params.get(name) || '').trim();
+}
+var trusteeNumber = getParam('trustee');
+var subscriberEmail = getParam('subscriberEmail');
+var subscriberName = getParam('subscriberName');
+var trusteeName = getParam('trusteeName');
+var trusteeEmail = getParam('trusteeEmail');
+function returnToMain() {
+  window.location.href = 'https://digilegacyvault.com';
+}
+function defaultNoticeText() {
+  var trusteeGreeting = trusteeName || 'there';
+  var senderSign = subscriberName || 'Your DIGI Legacy Vault Subscriber';
+  return 'Dear ' + trusteeGreeting + ',\n\n' +
+    "I'm writing to let you know that I'm updating my Trustee arrangements for my DIGI Legacy Vault. " +
+    "After some thought, I've decided to make a change to this role.\n\n" +
+    "This isn't a reflection on you personally — it's simply part of keeping my arrangements current. " +
+    "I sincerely appreciate that you agreed to take on this responsibility for me.\n\n" +
+    "If you have any questions, please feel free to reach out to me directly.\n\n" +
+    'With gratitude,\n' + senderSign;
+}
+// ============================================================
+// JSONP helper — identical pattern to dlv-voice-recorder's
+// jsonpRequest(), since fetch() responses from a no-cors POST
+// can never be read directly by the page that sent them.
+// ============================================================
+function jsonpRequest(url, callbackName, timeoutMs) {
+  return new Promise(function(resolve, reject) {
+    var script = document.createElement('script');
+    var timeoutId;
+    function cleanup() {
+      clearTimeout(timeoutId);
+      try { delete window[callbackName]; } catch (e) { window[callbackName] = undefined; }
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+    window[callbackName] = function(data) {
+      cleanup();
+      resolve(data);
+    };
+    timeoutId = setTimeout(function() {
+      cleanup();
+      reject(new Error('Verification request timed out'));
+    }, timeoutMs || 8000);
+    script.src = url + (url.indexOf('?') > -1 ? '&' : '?') + 'callback=' + callbackName;
+    script.onerror = function() {
+      cleanup();
+      reject(new Error('Verification script failed to load'));
+    };
+    document.body.appendChild(script);
+  });
+}
+function verifySendWithRetry(requestId, attemptsLeft) {
+  var callbackName = 'dlvTcVerify_' + requestId.replace(/[^a-zA-Z0-9]/g, '');
+  var url = GAS_WEBAPP_URL + '?action=checkTrusteeChangeNoticeSent&requestId=' + encodeURIComponent(requestId);
+  var btn = document.getElementById('send-btn');
+  jsonpRequest(url, callbackName, 8000)
+    .then(function(data) {
+      if (data && data.success && data.found) {
+        setSendStatus('');
+        document.getElementById('success-box').style.display = 'block';
+        btn.style.display = 'none';
+        document.getElementById('continue-btn').style.display = 'block';
+      } else if (attemptsLeft > 0) {
+        setSendStatus('Sending your notice… verifying (' + attemptsLeft + ' left)');
+        setTimeout(function() { verifySendWithRetry(requestId, attemptsLeft - 1); }, 2000);
+      } else {
+        setSendStatus('Could not verify the send. Please check your connection and try again.');
+        btn.disabled = false;
+      }
+    })
+    .catch(function() {
+      if (attemptsLeft > 0) {
+        setTimeout(function() { verifySendWithRetry(requestId, attemptsLeft - 1); }, 2000);
+      } else {
+        setSendStatus('Could not verify the send. Please check your connection and try again.');
+        btn.disabled = false;
+      }
+    });
+}
+// ============================================================
+// sendNotice — POSTs action:'sendTrusteeChangeNotice' to
+// Code.gs (IT69), matching sendNomination()'s no-cors + JSONP
+// verification pattern in dlv-voice-recorder.
+// ============================================================
+function sendNotice() {
+  if (!GAS_WEBAPP_URL || GAS_WEBAPP_URL.indexOf('PASTE_YOUR') !== -1) {
+    setSendStatus('Setup incomplete: GAS_WEBAPP_URL not configured.');
+    return;
+  }
+  if (!trusteeEmail) {
+    setSendStatus('Missing trustee email — please open this page again from the Trustees tab.');
+    return;
+  }
+  var noticeText = document.getElementById('notice-textarea').value.trim();
+  if (!noticeText) {
+    setSendStatus('Please write a notice above before sending.');
+    return;
+  }
+  var btn = document.getElementById('send-btn');
+  btn.disabled = true;
+  setSendStatus('Sending your notice…');
+  var requestId = 'TOK' + Date.now() + Math.random().toString(36).substring(2, 8);
+  var payload = {
+    action: 'sendTrusteeChangeNotice',
+    subscriberEmail: subscriberEmail,
+    subscriberName: subscriberName,
+    trusteeNumber: trusteeNumber,
+    trusteeName: trusteeName,
+    trusteeEmail: trusteeEmail,
+    noticeBody: noticeText,
+    clientRequestId: requestId
+  };
+  fetch(GAS_WEBAPP_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  })
+  .then(function() {
+    setSendStatus('Notice submitted. Verifying…');
+    setTimeout(function() { verifySendWithRetry(requestId, 5); }, 1500);
+  })
+  .catch(function(err) {
+    setSendStatus('Error sending request. (' + err.message + ')');
+    btn.disabled = false;
+  });
+}
+function setSendStatus(msg) { document.getElementById('send-status').textContent = msg; }
+document.addEventListener('DOMContentLoaded', function() {
+  var label = document.getElementById('trustee-number-label');
+  if (label) label.textContent = trusteeNumber ? trusteeNumber : 'Not specified';
+  var nameLabel = document.getElementById('trustee-name-label');
+  if (nameLabel && trusteeName) nameLabel.textContent = '(' + trusteeName + ')';
+  var noticeArea = document.getElementById('notice-textarea');
+  if (noticeArea) noticeArea.value = defaultNoticeText();
+});
+</script>
+</body>
+</html>
