@@ -2,6 +2,21 @@
 <!--
 ============================================================
  DIGI Legacy Vault — dlv-trustee-change (GitHub Pages version)
+ IT70 | July 16, 2026
+ BASE: IT69 verbatim, plus the following.
+ CHANGE: critical bug fix, not a copy-only bump. GAS_WEBAPP_URL
+ below was pointing at a deployment whose exec URL had started
+ returning a Google Drive "file does not exist" error (confirmed
+ live, reproducible, unrelated to code correctness — that
+ deployment's registration was broken at Google's serving layer).
+ As a result, every "Send Notice" click on this page silently hit
+ a dead endpoint: the no-cors POST had nowhere real to land, and
+ the JSONP verification poll against the same dead URL could never
+ get a real response, always ending in "Could not verify the send."
+ Fixed by pointing GAS_WEBAPP_URL at the working deployment (same
+ project, Deployment ID that has been serving successfully for
+ months) instead of the broken one. No other logic changed.
+============================================================
  IT69 | July 15, 2026
  NEW FILE.
  Standalone companion app to dlv-voice-recorder, opened from the
@@ -189,7 +204,7 @@ h1 {
 </head>
 <body>
 <button id="return-btn" onclick="returnToMain()">&#8592; Return to Main Page</button>
-<div id="tc-topbar">DIGI LEGACY VAULT &nbsp;&middot;&nbsp; TRUSTEE REPLACEMENT NOTICE &nbsp;&middot;&nbsp; IT69</div>
+<div id="tc-topbar">DIGI LEGACY VAULT &nbsp;&middot;&nbsp; TRUSTEE REPLACEMENT NOTICE &nbsp;&middot;&nbsp; IT70</div>
 <div id="tc-card">
   <h1>&#128260; Replace This Trustee</h1>
   <p id="tc-subtitle">Send a short notice to your current trustee before nominating a replacement</p>
@@ -204,14 +219,14 @@ h1 {
   </div>
   <button class="tc-btn" id="send-btn" onclick="sendNotice()">&#128231; Send Notice</button>
   <button class="tc-btn" id="continue-btn" onclick="returnToMain()">&#8594; Return to Nominate a Replacement</button>
-  <div id="tc-footer">digilegacyvault.com &nbsp;&middot;&nbsp; IT69</div>
+  <div id="tc-footer">digilegacyvault.com &nbsp;&middot;&nbsp; IT70</div>
 </div>
 <button id="return-btn" style="margin-top:14px;" onclick="returnToMain()">&#8592; Return to Main Page</button>
 <script>
 // ============================================================
 // CONFIG — shared with dlv-voice-recorder and Code.gs.
 // ============================================================
-var GAS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzyJ8ioKlBCfrZsSlVMCNirecqWGZnu8u4BSn33xW1w8Bngr2Xwv8JFHBabnKODTWNb6w/exec';
+var GAS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxGG5z60Ce0ubFFwasaKqfTbPb8uyb4JDuaYSbeePrZt1q8vBdKSjclL6OQMNEaSytr9A/exec';
 // ============================================================
 // Read the URL params set by openTrusteeChange(n) in
 // upload_test.html: trustee, subscriberEmail, subscriberName,
