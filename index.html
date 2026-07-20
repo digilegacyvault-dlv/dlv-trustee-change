@@ -2,6 +2,23 @@
 <!--
 ============================================================
  DIGI Legacy Vault — dlv-trustee-change (GitHub Pages version)
+ IT71 | July 20, 2026
+ BASE: IT70 verbatim, plus the following.
+ CHANGE: "Return to Nominate a Replacement" button was calling the
+ same returnToMain() as the "Return to Main Page" buttons, so after
+ a successful notice send it dumped the subscriber onto the public
+ marketing homepage (digilegacyvault.com) with no path back into
+ their Profile & Trustees interface to actually nominate a
+ replacement — breaking the 2-step flow the page itself promises.
+ Fixed by splitting into two functions: returnToMain() still goes
+ to the public homepage (used by both "Return to Main Page"
+ buttons); returnToNominate() is new, used only by the
+ "Return to Nominate a Replacement" button, and sends the
+ subscriber to GAS_WEBAPP_URL — the authenticated app — instead.
+ NOTE: this lands on the app's default view. If there's a specific
+ query param that opens straight to the Trustees tab / Profile
+ modal, pass it along and this will be tightened further.
+============================================================
  IT70 | July 16, 2026
  BASE: IT69 verbatim, plus the following.
  CHANGE: critical bug fix, not a copy-only bump. GAS_WEBAPP_URL
@@ -204,7 +221,7 @@ h1 {
 </head>
 <body>
 <button id="return-btn" onclick="returnToMain()">&#8592; Return to Main Page</button>
-<div id="tc-topbar">DIGI LEGACY VAULT &nbsp;&middot;&nbsp; TRUSTEE REPLACEMENT NOTICE &nbsp;&middot;&nbsp; IT70</div>
+<div id="tc-topbar">DIGI LEGACY VAULT &nbsp;&middot;&nbsp; TRUSTEE REPLACEMENT NOTICE &nbsp;&middot;&nbsp; IT71</div>
 <div id="tc-card">
   <h1>&#128260; Replace This Trustee</h1>
   <p id="tc-subtitle">Send a short notice to your current trustee before nominating a replacement</p>
@@ -218,8 +235,8 @@ h1 {
     <p>&#10003; Your notice has been sent. You may now return to the main page and nominate a replacement trustee — simply delete this nomination and submit a new one. No fee applies.</p>
   </div>
   <button class="tc-btn" id="send-btn" onclick="sendNotice()">&#128231; Send Notice</button>
-  <button class="tc-btn" id="continue-btn" onclick="returnToMain()">&#8594; Return to Nominate a Replacement</button>
-  <div id="tc-footer">digilegacyvault.com &nbsp;&middot;&nbsp; IT70</div>
+  <button class="tc-btn" id="continue-btn" onclick="returnToNominate()">&#8594; Return to Nominate a Replacement</button>
+  <div id="tc-footer">digilegacyvault.com &nbsp;&middot;&nbsp; IT71</div>
 </div>
 <button id="return-btn" style="margin-top:14px;" onclick="returnToMain()">&#8592; Return to Main Page</button>
 <script>
@@ -241,8 +258,18 @@ var subscriberEmail = getParam('subscriberEmail');
 var subscriberName = getParam('subscriberName');
 var trusteeName = getParam('trusteeName');
 var trusteeEmail = getParam('trusteeEmail');
+// "Return to Main Page" — always the public marketing homepage.
 function returnToMain() {
   window.location.href = 'https://digilegacyvault.com';
+}
+// "Return to Nominate a Replacement" — IT71 fix. This used to call
+// returnToMain() too, stranding the subscriber on the public
+// homepage with no way back into their account. Now sends them to
+// the authenticated app instead. If a query param exists to open
+// straight to the Trustees tab / Profile modal, add it to the URL
+// below once known (e.g. GAS_WEBAPP_URL + '?action=trustees').
+function returnToNominate() {
+  window.location.href = GAS_WEBAPP_URL;
 }
 function defaultNoticeText() {
   var trusteeGreeting = trusteeName || 'there';
@@ -315,7 +342,7 @@ function verifySendWithRetry(requestId, attemptsLeft) {
 }
 // ============================================================
 // sendNotice — POSTs action:'sendTrusteeChangeNotice' to
-// Code.gs (IT69), matching sendNomination()'s no-cors + JSONP
+// Code.gs, matching sendNomination()'s no-cors + JSONP
 // verification pattern in dlv-voice-recorder.
 // ============================================================
 function sendNotice() {
