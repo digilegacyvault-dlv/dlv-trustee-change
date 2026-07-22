@@ -2,6 +2,16 @@
 <!--
 ============================================================
  DIGI Legacy Vault — dlv-trustee-change (GitHub Pages version)
+ IT75 | July 22, 2026
+ BASE: IT71 verbatim, plus the following.
+ CHANGE: removed the visible "· IT[n]" version tag from the topbar
+ and footer — it had no meaning to a subscriber viewing this page,
+ and isn't needed for Claude to verify version either (confirmed
+ directly via the extension regardless of what's on-screen).
+ Internal IT tracking continues in this header comment only, which
+ subscribers never see. Same change applied to dlv-voice-recorder
+ (IT75) in the same session.
+============================================================
  IT71 | July 20, 2026
  BASE: IT70 verbatim, plus the following.
  CHANGE: "Return to Nominate a Replacement" button was calling the
@@ -221,7 +231,7 @@ h1 {
 </head>
 <body>
 <button id="return-btn" onclick="returnToMain()">&#8592; Return to Main Page</button>
-<div id="tc-topbar">DIGI LEGACY VAULT &nbsp;&middot;&nbsp; TRUSTEE REPLACEMENT NOTICE &nbsp;&middot;&nbsp; IT71</div>
+<div id="tc-topbar">DIGI LEGACY VAULT &nbsp;&middot;&nbsp; TRUSTEE REPLACEMENT NOTICE</div>
 <div id="tc-card">
   <h1>&#128260; Replace This Trustee</h1>
   <p id="tc-subtitle">Send a short notice to your current trustee before nominating a replacement</p>
@@ -236,7 +246,7 @@ h1 {
   </div>
   <button class="tc-btn" id="send-btn" onclick="sendNotice()">&#128231; Send Notice</button>
   <button class="tc-btn" id="continue-btn" onclick="returnToNominate()">&#8594; Return to Nominate a Replacement</button>
-  <div id="tc-footer">digilegacyvault.com &nbsp;&middot;&nbsp; IT71</div>
+  <div id="tc-footer">digilegacyvault.com</div>
 </div>
 <button id="return-btn" style="margin-top:14px;" onclick="returnToMain()">&#8592; Return to Main Page</button>
 <script>
